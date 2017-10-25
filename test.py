@@ -40,11 +40,8 @@ def get_next_page(bsObj):
         if next_ref is None:
             return None
         else:
-            return next_ref.attrs["href"]
-
-
-
-
+            x = re.split(r'=', re.split(r'\?', next_ref.attrs["href"] )[1])
+            return {x[0]:x[1]}
 
 if __name__ == '__main__':
 
@@ -54,12 +51,16 @@ if __name__ == '__main__':
     with requests.Session() as s:
         s.headers.update({'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) '
                                'Chrome/61.0.3163.79 Safari/537.36'})
-        heap = get_html(s)
+        heap = get_html(s, None)
 
         if heap is not None:
             get_ref(heap)
-            print(data)
-            print(get_next_page(heap))
+            payload = get_next_page(heap)
+            heap = get_html(s, payload)
+            if heap is not None:
+                get_ref(heap)
+                print(data)
+
 
 
     #html = s.get(url, params=payload)
