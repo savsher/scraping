@@ -6,7 +6,6 @@ import requests
 from bs4 import BeautifulSoup
 import re
 
-
 def get_links(s, page):
     global urlData
     annex = "/buy/new/"
@@ -22,7 +21,11 @@ def get_links(s, page):
     if tmp is None:
         return False
     for x in tmp.find_all("li"):
-        urlData.add(x.find("a").attrs["href"])
+        urlData.add((x.a.find('div', {'class': 'caption'}).text,
+                     x.a.find('div', {'class': 'price'}).text,
+                     x.a.find('div', {'class': 'price'}).next_sibling.strip(),
+                     x.a.attrs["href"]))
+
     tmp = data.find("div", {"class": "pagination"})
     if tmp is not None:
         nextref = tmp.find("a", {"id": "_next_page"})
