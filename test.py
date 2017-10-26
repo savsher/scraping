@@ -6,33 +6,32 @@ import requests
 from bs4 import BeautifulSoup
 import re
 
-def get_source(s, page):
+
+def get_links(s, page):
+    global urlData
     annex = "/buy/new/"
-    if page eq '1':
-        html = s.get(url+annex)
-    else:
+    if bool(page):
         html = s.get(url+annex, params=page)
+    else:
+        html = s.get(url+annex)
     bsObj = BeautifulSoup(html.text)
     data = bsObj.find("div", {"class": "catalogueContainer"})
-    return data
-
-def get_data(data):
-    global urlData
+    if data is None:
+        return False
     tmp = data.find("ul", {"class": "catalogue blocks"})
     if tmp is None:
         return False
     for x in tmp.find_all("li"):
         urlData.add(x.find("a").attrs["href"])
-    return True
-
-def get_page(data):
     tmp = data.find("div", {"class": "pagination"})
     if tmp is not None:
-        next_ref = tmp.find("a", {"id": "_next_page"})
-        if next_ref is not None:
-            tmp = re.split(r'=', re.split(r'\?', next_ref.attrs["href"])[1])
-            return({tmp[0]:tmp[1]})
-    return None
+        nextref = tmp.find("a", {"id": "_next_page"})
+        if nextref is not None:
+            x = re.split(r'=', re.split(r'\?', nextref.attrs["href"])[1])
+            get_links(s, {x[0]:x[1]})
+        return True
+    else:
+        return True
 
 if __name__ == '__main__':
 
@@ -40,8 +39,8 @@ if __name__ == '__main__':
     urlData = set()
 
     with requests.Session() as s:
-        s.headers.update({'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.79 Safari/537.36'})
-        page = '1'
-        while True:
-            my = get_source(s, page)
-            if html is not None:
+        s.headers.update({'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
+                                       ' Chrome/61.0.3163.79 Safari/537.36'})
+        page = dict()
+        if (get_links(s, page)):
+            print(urlData)
