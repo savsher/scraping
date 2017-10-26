@@ -36,6 +36,11 @@ def get_links(s, page):
     else:
         return True
 
+def get_sites():
+    base_url = "http://used-avtomir.ru"
+
+
+
 if __name__ == '__main__':
 
     url = "http://vrn.used-avtomir.ru"
