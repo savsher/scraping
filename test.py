@@ -47,3 +47,4 @@ if __name__ == '__main__':
         page = dict()
         if (get_links(s, page)):
             print(urlData)
+            print(url)
