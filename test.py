@@ -5,6 +5,7 @@
 import requests
 from bs4 import BeautifulSoup
 import re
+import os
 
 def get_links(s, page):
     global urlData
@@ -36,11 +37,6 @@ def get_links(s, page):
     else:
         return True
 
-def get_sites():
-    base_url = "http://used-avtomir.ru"
-
-
-
 if __name__ == '__main__':
 
     url = "http://vrn.used-avtomir.ru"
@@ -50,6 +46,7 @@ if __name__ == '__main__':
         s.headers.update({'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
                                        ' Chrome/61.0.3163.79 Safari/537.36'})
         page = dict()
-        if (get_links(s, page)):
+        if get_links(s, page):
             print(urlData)
-            print(url)
+
+
