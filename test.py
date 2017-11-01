@@ -6,6 +6,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import os
+import sqlite3
 
 def get_links(s, page):
     global urlData
@@ -41,12 +42,33 @@ if __name__ == '__main__':
 
     url = "http://vrn.used-avtomir.ru"
     urlData = set()
-
+    # Scrap data from site
     with requests.Session() as s:
         s.headers.update({'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
                                        ' Chrome/61.0.3163.79 Safari/537.36'})
         page = dict()
         if get_links(s, page):
             print(urlData)
+
+    # Work with database
+    db_file = 'auto.db'
+    schema_file = 'auto_schema.sql'
+    db_is_new = not os.path.exists(db_file)
+    with sqlite3.connect(db_file) as conn:
+        cur = conn.cursor()
+        if db_is_new:
+            print('Create schema')
+            with open(schema_file, 'rt') as f:
+                schema = f.read()
+            conn.executescript(schema)
+            print('Insert data')
+            x = next(iter(urlData))
+            cur.execute('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', x)
+            conn.commit()
+        else:
+            #print(next(iter(urlData)))
+            print('Pull out data')
+        cur.close()
+
 
 
