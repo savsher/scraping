@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 import re
 import os
 import sqlite3
+import datetime
 
 def get_links(s, page):
     global urlData
@@ -42,13 +43,15 @@ if __name__ == '__main__':
 
     url = "http://vrn.used-avtomir.ru"
     urlData = set()
+    baseData = set()
     # Scrap data from site
     with requests.Session() as s:
         s.headers.update({'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
                                        ' Chrome/61.0.3163.79 Safari/537.36'})
         page = dict()
         if get_links(s, page):
-            print(urlData)
+            pass
+            #print(urlData)
 
     # Work with database
     db_file = 'auto.db'
@@ -62,13 +65,20 @@ if __name__ == '__main__':
                 schema = f.read()
             conn.executescript(schema)
             print('Insert data')
-            x = next(iter(urlData))
-            cur.execute('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', x)
+            #x = next(iter(urlData))
+            #cur.execute('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', x)
+            cur.executemany('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', urlData)
             conn.commit()
         else:
-            #print(next(iter(urlData)))
             print('Pull out data')
+            cur.execute('select name, price, description, link from usedavtomirru')
+            for row in cur.fetchall():
+                t1, t2, t3, t4 = row
+                baseData.add((t1, t2, t3, t4))
         cur.close()
+    x = urlData.pop()
+    if baseData == urlData:
+        print(baseData)
 
 
 
