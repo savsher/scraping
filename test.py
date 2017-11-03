@@ -8,7 +8,9 @@ import re
 import os
 import sqlite3
 import smtplib
-
+import email.utils
+from email.mime.text import MIMEText
+#import getpass
 
 def get_links(s, page):
     global urlData
@@ -42,15 +44,8 @@ def get_links(s, page):
 
 if __name__ == '__main__':
 
-    mailserv = 'smtp.yandex.ru'
-    username = 'savpod'
-    passwd = 'asdfafd'
-
-
-
-
-
-    url = "http://vrn.used-avtomir.ru"
+    #url = "http://vrn.used-avtomir.ru"
+    url = "http://used-avtomir.ru"
     urlData = set()
     baseData = set()
     new_set = set()
@@ -62,7 +57,7 @@ if __name__ == '__main__':
                                        ' Chrome/61.0.3163.79 Safari/537.36'})
         page = dict()
         if get_links(s, page):
-            #urlData.pop()
+            urlData.pop()
             #urlData.pop()
             #urlData.pop()
             pass
@@ -96,5 +91,42 @@ if __name__ == '__main__':
                 cur.executemany('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', new_set)
         cur.close()
     if new_set:
-
         print(new_set)
+        # Initial parameter for email
+        mail_server = 'smtp.yandex.ru'
+        mail_port = 465
+        from_email = 'savpod@yandex.ru'
+        to_email = 'savsher@gmail.com'
+        to_email2 = 'savsher@yandex.ru'
+        to_email3 = 'ivan.ivanov@april-inn.ru'
+        username = 'savpod'
+        passwd = ',tutvjnf40'
+
+        # Create the message
+        newlist = []
+        for i in new_set:
+            newlist.append(i[0]+'\n')
+            newlist.append(i[1]+'\n')
+            newlist.append(i[2]+'\n')
+            newlist.append(url+i[3]+'\n')
+            newlist.append('+++++++++++++++++++++++++++\n\n')
+
+        msg = MIMEText(''.join(newlist))
+        msg.set_unixfrom('author')
+        msg['To'] = email.utils.formataddr(('Recipient', to_email))
+        msg['From'] = email.utils.formataddr(('Author', from_email))
+        msg['Subject'] = 'new objects'
+
+
+        server = smtplib.SMTP_SSL(mail_server)
+        try:
+            #server.set_debuglevel(True)
+            server.ehlo()
+            if server.has_extn('STARTTLS'):
+                server.starttls()
+                server.ehlo()
+            if server.has_extn('AUTH'):
+                server.login(username, passwd)
+            server.sendmail(from_email, [to_email, to_email2, to_email3], msg.as_string())
+        finally:
+            server.quit()
