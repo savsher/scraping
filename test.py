@@ -7,7 +7,8 @@ from bs4 import BeautifulSoup
 import re
 import os
 import sqlite3
-import datetime
+import smtplib
+
 
 def get_links(s, page):
     global urlData
@@ -41,15 +42,29 @@ def get_links(s, page):
 
 if __name__ == '__main__':
 
+    mailserv = 'smtp.yandex.ru'
+    username = 'savpod'
+    passwd = 'asdfafd'
+
+
+
+
+
     url = "http://vrn.used-avtomir.ru"
     urlData = set()
     baseData = set()
+    new_set = set()
+    old_set = set()
+
     # Scrap data from site
     with requests.Session() as s:
         s.headers.update({'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
                                        ' Chrome/61.0.3163.79 Safari/537.36'})
         page = dict()
         if get_links(s, page):
+            #urlData.pop()
+            #urlData.pop()
+            #urlData.pop()
             pass
             #print(urlData)
 
@@ -65,8 +80,6 @@ if __name__ == '__main__':
                 schema = f.read()
             conn.executescript(schema)
             print('Insert data')
-            #x = next(iter(urlData))
-            #cur.execute('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', x)
             cur.executemany('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', urlData)
             conn.commit()
         else:
@@ -75,10 +88,13 @@ if __name__ == '__main__':
             for row in cur.fetchall():
                 t1, t2, t3, t4 = row
                 baseData.add((t1, t2, t3, t4))
+            old_set = baseData.difference(urlData)
+            new_set = urlData.difference(baseData)
+            if old_set:
+                cur.executemany('delete from usedavtomirru where name=? and price=? and description=? and link=?', old_set)
+            if new_set:
+                cur.executemany('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', new_set)
         cur.close()
-    x = urlData.pop()
-    if baseData == urlData:
-        print(baseData)
+    if new_set:
 
-
-
+        print(new_set)
