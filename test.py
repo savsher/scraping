@@ -1,7 +1,6 @@
 #
 # (C) savsher@gmail.com 20171025
 #
-
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -56,7 +55,7 @@ if __name__ == '__main__':
                                        ' Chrome/61.0.3163.79 Safari/537.36'})
         page = dict()
         if get_links(s, page):
-            urlData.pop()
+            #urlData.pop()
             #urlData.pop()
             #urlData.pop()
             pass
