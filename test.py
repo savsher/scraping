@@ -1,7 +1,6 @@
 #
 # (C) savsher@gmail.com 20171025
 #
-
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -10,7 +9,11 @@ import sqlite3
 import smtplib
 import email.utils
 from email.mime.text import MIMEText
+<<<<<<< HEAD
 #import getpass
+=======
+
+>>>>>>> 8f795dab512ca657aa2bfc9df0cece61aa095f70
 
 def get_links(s, page):
     global urlData
@@ -44,8 +47,12 @@ def get_links(s, page):
 
 if __name__ == '__main__':
 
+<<<<<<< HEAD
     #url = "http://vrn.used-avtomir.ru"
     url = "http://used-avtomir.ru"
+=======
+    url = "http://vrn.used-avtomir.ru"
+>>>>>>> 8f795dab512ca657aa2bfc9df0cece61aa095f70
     urlData = set()
     baseData = set()
     new_set = set()
@@ -92,12 +99,17 @@ if __name__ == '__main__':
         cur.close()
     if new_set:
         print(new_set)
+<<<<<<< HEAD
         # Initial parameter for email
+=======
+        # Initial parameters for email
+>>>>>>> 8f795dab512ca657aa2bfc9df0cece61aa095f70
         mail_server = 'smtp.yandex.ru'
         mail_port = 465
         from_email = 'savpod@yandex.ru'
         to_email = 'savsher@gmail.com'
         to_email2 = 'savsher@yandex.ru'
+<<<<<<< HEAD
         to_email3 = 'ivan.ivanov@april-inn.ru'
         username = 'savpod'
         passwd = ',tutvjnf40'
@@ -121,12 +133,37 @@ if __name__ == '__main__':
         server = smtplib.SMTP_SSL(mail_server)
         try:
             #server.set_debuglevel(True)
+=======
+        username = 'savpod'
+        passwd = ',tutvjnf40'
+
+        #Create the message
+        newlist = []
+        for i in new_set:
+            newlist.append(i[0] + '\n')
+            newlist.append(i[1] + '\n')
+            newlist.append(i[2] + '\n')
+            newlist.append(url + i[3] + '\n')
+            newlist.append('+++++++++++++++++++++++++++\n\n')
+        msg = MIMEText(''.join(newlist))
+        msg.set_unixfrom('author')
+        msg['To'] = email.utils.formataddr(('Recipient', to_email))
+        msg['From'] = email.utils.formataddr(('Author', from_email))
+        msg['Subject'] = 'new objects'
+        server = smtplib.SMTP_SSL(mail_server)
+        try:
+            # server.set_debuglevel(True)
+>>>>>>> 8f795dab512ca657aa2bfc9df0cece61aa095f70
             server.ehlo()
             if server.has_extn('STARTTLS'):
                 server.starttls()
                 server.ehlo()
             if server.has_extn('AUTH'):
                 server.login(username, passwd)
+<<<<<<< HEAD
             server.sendmail(from_email, [to_email, to_email2, to_email3], msg.as_string())
+=======
+            server.sendmail(from_email, [to_email, to_email2,], msg.as_string())
+>>>>>>> 8f795dab512ca657aa2bfc9df0cece61aa095f70
         finally:
             server.quit()
