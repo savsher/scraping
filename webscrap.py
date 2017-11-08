@@ -56,13 +56,13 @@ def daemonize(pidfile, *, stdin='/dev/null', stdout='/dev/null', stderr='/dev/nu
         raise SystemExit(1)
     signal.signal(signal.SIGTERM, sigterm_handler)
 
-def main():
-    sys.stdout.write('Daemon started with pid {}\n'.format(os.getpid()))
-    while True:
-        sys.stdout.write('Test {}\n'.format(time.ctime()))
-        time.sleep(200)
-
 def web_scraping():
+    url = "http://vrn.used-avtomir.ru"
+    urlData = set()
+    baseData = set()
+    new_set = set()
+    old_set = set()
+
     def get_links(s, page):
         annex = "/buy/new/"
         if bool(page):
@@ -92,21 +92,97 @@ def web_scraping():
         else:
             return True
 
-    sys.stdout.write('Daemon <webscraping> started with pid {}\n'.format(os.getpid()))
+    def check_dbs():
+        """ Check db and get data from it """
+        db_file = '/tmp/auto.db'
+        schema_file = '/home/mrx/Pyfiles/scraping/auto_schema.sql'
+        db_is_new = not os.path.exists(db_file)
+        with sqlite3.connect(db_file) as conn:
+            cur = conn.cursor()
+            if db_is_new:
+                sys.stdout.write('Create table')
+                with open(schema_file, 'rt') as f:
+                    schema = f.read()
+                    conn.executescript(schema)
+                    print('Insert data')
+                    #cur.executemany('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', urlData)
+                    #conn.commit()
+
+            else:
+                #print('Pull out data')
+                cur.execute('select name, price, description, link from usedavtomirru')
+                for row in cur.fetchall():
+                    t1, t2, t3, t4 = row
+                    baseData.add((t1, t2, t3, t4))
+
+            old_set = baseData.difference(urlData)
+            print('OLD:\n{}'.format(old_set))
+            new_set = urlData.difference(baseData)
+            print('NEW:\n{}'.format(new_set))
+            if old_set:
+                z = cur.executemany('delete from usedavtomirru where name=? and price=? and description=? and link=?', old_set)
+                print('test {}'.format(z))
+            if new_set:
+                cur.executemany('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', new_set)
+            cur.close()
+
+    def send_emails():
+        # Initial parameter for email
+        mail_server = 'smtp.yandex.ru'
+        mail_port = 465
+        from_email = 'savpod@yandex.ru'
+        to_email = 'savsher@gmail.com'
+        to_email2 = 'savsher@yandex.ru'
+        username = 'savpod'
+        passwd = ',tutvjnf40'
+
+        # Create the message
+        newlist = []
+        for i in new_set:
+            newlist.append(i[0] + '\n')
+            newlist.append(i[1] + '\n')
+            newlist.append(i[2] + '\n')
+            newlist.append(url + i[3] + '\n')
+            newlist.append('+++++++++++++++++++++++++++\n\n')
+
+        msg = MIMEText(''.join(newlist))
+        msg.set_unixfrom('author')
+        msg['To'] = email.utils.formataddr(('Recipient', to_email))
+        msg['From'] = email.utils.formataddr(('Author', from_email))
+        msg['Subject'] = 'new objects'
+
+        server = smtplib.SMTP_SSL(mail_server)
+        try:
+            # server.set_debuglevel(True)
+            server.ehlo()
+            if server.has_extn('STARTTLS'):
+                server.starttls()
+                server.ehlo()
+            if server.has_extn('AUTH'):
+                server.login(username, passwd)
+                server.sendmail(from_email, [to_email, ], msg.as_string())
+        finally:
+            server.quit()
+
+    print('Daemon <webscraping> started with pid {}\n'.format(os.getpid()))
     while True:
-        url = "http://vrn.used-avtomir.ru"
-        urlData = set()
-        #baseData = set()
         # Scrap data from site
         with requests.Session() as s:
             s.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
                                             ' Chrome/61.0.3163.79 Safari/537.36'})
             page = dict()
             if get_links(s, page):
-                # urlData.pop()
-                sys.stdout.write('{} - get data from site'.format(time.clock()))
+                print(urlData.pop())
+                print('{} - get data from site'.format(time.ctime()))
+                check_dbs()
+                print('{} - get data from db and compare it with new'.format(time.ctime()))
+                sys.stdout.flush()
+                if new_set:
+                    send_emails()
+                    print('{} - print new data to email'.format(time.ctime()))
+
         # Coffee break
-        time.sleep(20)
+        time.sleep(10)
 
 if __name__ == '__main__':
     PIDFILE = '/tmp/webscrap.pid'
@@ -119,7 +195,9 @@ if __name__ == '__main__':
         except RuntimeError as e:
             print(e, file=sys.stderr)
             raise SystemExit(1)
+        # Main function
         web_scraping()
+
     elif sys.argv[1] == 'stop':
         if os.path.exists(PIDFILE):
             with open(PIDFILE) as f:
