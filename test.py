@@ -9,12 +9,8 @@ import sqlite3
 import smtplib
 import email.utils
 from email.mime.text import MIMEText
-<<<<<<< HEAD
+
 #import getpass
-=======
-
->>>>>>> 8f795dab512ca657aa2bfc9df0cece61aa095f70
-
 def get_links(s, page):
     global urlData
     annex = "/buy/new/"
@@ -46,13 +42,9 @@ def get_links(s, page):
         return True
 
 if __name__ == '__main__':
-
-<<<<<<< HEAD
     #url = "http://vrn.used-avtomir.ru"
     url = "http://used-avtomir.ru"
-=======
-    url = "http://vrn.used-avtomir.ru"
->>>>>>> 8f795dab512ca657aa2bfc9df0cece61aa095f70
+
     urlData = set()
     baseData = set()
     new_set = set()

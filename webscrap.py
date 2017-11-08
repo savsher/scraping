@@ -60,8 +60,8 @@ def web_scraping():
     url = "http://vrn.used-avtomir.ru"
     urlData = set()
     baseData = set()
-    new_set = set()
-    old_set = set()
+    newset = set()
+    oldset = set()
 
     def get_links(s, page):
         annex = "/buy/new/"
@@ -115,18 +115,19 @@ def web_scraping():
                     t1, t2, t3, t4 = row
                     baseData.add((t1, t2, t3, t4))
 
-            old_set = baseData.difference(urlData)
-            print('OLD:\n{}'.format(old_set))
-            new_set = urlData.difference(baseData)
-            print('NEW:\n{}'.format(new_set))
-            if old_set:
-                z = cur.executemany('delete from usedavtomirru where name=? and price=? and description=? and link=?', old_set)
-                print('test {}'.format(z))
-            if new_set:
-                cur.executemany('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', new_set)
+            oldset = baseData.difference(urlData)
+            newset = urlData.difference(baseData)
+            if oldset:
+                cur.executemany('delete from usedavtomirru where name=? and price=? and description=? and link=?', oldset)
+            if newset:
+                cur.executemany('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', newset)
             cur.close()
+            if newset:
+                return newset
+            else:
+                return None
 
-    def send_emails():
+    def send_emails(newset):
         # Initial parameter for email
         mail_server = 'smtp.yandex.ru'
         mail_port = 465
@@ -138,7 +139,7 @@ def web_scraping():
 
         # Create the message
         newlist = []
-        for i in new_set:
+        for i in newset:
             newlist.append(i[0] + '\n')
             newlist.append(i[1] + '\n')
             newlist.append(i[2] + '\n')
@@ -166,23 +167,27 @@ def web_scraping():
 
     print('Daemon <webscraping> started with pid {}\n'.format(os.getpid()))
     while True:
+        urlData.clear()
+        baseData.clear()
+        newset.clear()
+        oldset.clear()
         # Scrap data from site
         with requests.Session() as s:
             s.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
                                             ' Chrome/61.0.3163.79 Safari/537.36'})
             page = dict()
             if get_links(s, page):
-                print(urlData.pop())
+                urlData.pop()
+                urlData.pop()
                 print('{} - get data from site'.format(time.ctime()))
-                check_dbs()
-                print('{} - get data from db and compare it with new'.format(time.ctime()))
-                sys.stdout.flush()
-                if new_set:
-                    send_emails()
+                z = check_dbs()
+                if z is not None:
+                    print('{} - get data from db and compare it with new'.format(time.ctime()))
+                    send_emails(z)
                     print('{} - print new data to email'.format(time.ctime()))
-
+                sys.stdout.flush()
         # Coffee break
-        time.sleep(10)
+        time.sleep(6)
 
 if __name__ == '__main__':
     PIDFILE = '/tmp/webscrap.pid'
