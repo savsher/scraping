@@ -57,18 +57,28 @@ def daemonize(pidfile, *, stdin='/dev/null', stdout='/dev/null', stderr='/dev/nu
     signal.signal(signal.SIGTERM, sigterm_handler)
 
 def web_scraping():
+    """Main function is """
     url = "http://vrn.used-avtomir.ru"
     urlData = set()
     baseData = set()
     newset = set()
     oldset = set()
 
+    def get_all_site():
+        pass
+
     def get_links(s, page):
+        """ Get Date from site"""
         annex = "/buy/new/"
-        if bool(page):
-            html = s.get(url + annex, params=page)
-        else:
-            html = s.get(url + annex)
+        try:
+            if bool(page):
+                html = s.get(url + annex, params=page, timeout=(5,2))
+            else:
+                html = s.get(url + annex)
+        except requests.exceptions.RequestException as e:
+            print('{}'.format(e))
+            return False
+
         bsObj = BeautifulSoup(html.text)
         data = bsObj.find("div", {"class": "catalogueContainer"})
         if data is None:
@@ -105,12 +115,13 @@ def web_scraping():
                     schema = f.read()
                     conn.executescript(schema)
                     print('Insert data')
-                    #cur.executemany('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', urlData)
-                    #conn.commit()
-
             else:
-                #print('Pull out data')
-                cur.execute('select name, price, description, link from usedavtomirru')
+                try:
+                    cur.execute('select name, price, description, link from usedavtomirru')
+                except sqlite3.OperationalError as e:
+                    print('SELECT Error:\n{}'.format(e))
+                    return None
+
                 for row in cur.fetchall():
                     t1, t2, t3, t4 = row
                     baseData.add((t1, t2, t3, t4))
@@ -118,9 +129,19 @@ def web_scraping():
             oldset = baseData.difference(urlData)
             newset = urlData.difference(baseData)
             if oldset:
-                cur.executemany('delete from usedavtomirru where name=? and price=? and description=? and link=?', oldset)
+                try:
+                    cur.executemany('delete from usedavtomirru where name=? and price=? and description=? and link=?', oldset)
+                except sqlite3.OperationalError as e:
+                    print('DELETE Error:\n{}'.format(e))
+                    return None
+                print('Delete outdate machine:\n{}'.format(oldset))
             if newset:
-                cur.executemany('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', newset)
+                try:
+                    cur.executemany('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', newset)
+                except sqlite3.OperationalError as e:
+                    print('INSERT Error:\n{}'.format(e))
+                    return None
+                print('Add new vehile:\n{}'.format(newset))
             cur.close()
             if newset:
                 return newset
@@ -177,8 +198,6 @@ def web_scraping():
                                             ' Chrome/61.0.3163.79 Safari/537.36'})
             page = dict()
             if get_links(s, page):
-                urlData.pop()
-                urlData.pop()
                 print('{} - get data from site'.format(time.ctime()))
                 z = check_dbs()
                 if z is not None:
@@ -187,7 +206,7 @@ def web_scraping():
                     print('{} - print new data to email'.format(time.ctime()))
                 sys.stdout.flush()
         # Coffee break
-        time.sleep(6)
+        time.sleep(20)
 
 if __name__ == '__main__':
     PIDFILE = '/tmp/webscrap.pid'
