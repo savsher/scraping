@@ -64,8 +64,24 @@ def web_scraping():
     newset = set()
     oldset = set()
 
-    def get_all_site():
-        pass
+    def get_all_site(s):
+        url = 'http://used-avtomir.ru'
+        subsite = set()
+        try:
+            html = s.get(url,timeout=(5,2))
+        except requests.exceptions.RequestException as e:
+            print('{}'.format(e))
+            return None
+        bsObj = BeautifulSoup(html.text)
+        data = bsObj.find("div", {"class": "ik_select_dropdown citySelect-dd"})
+        if data is None:
+            return None
+        tmp = data.find("ul")
+        if tmp is None:
+            return None
+        for x in tmp.find_all("li"):
+            subsite.add(x.text)
+        return subsite
 
     def get_links(s, page):
         """ Get Date from site"""
@@ -196,6 +212,8 @@ def web_scraping():
         with requests.Session() as s:
             s.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
                                             ' Chrome/61.0.3163.79 Safari/537.36'})
+            z = get_all_site(s)
+            print(z)
             page = dict()
             if get_links(s, page):
                 print('{} - get data from site'.format(time.ctime()))

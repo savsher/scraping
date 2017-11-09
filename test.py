@@ -10,6 +10,30 @@ import smtplib
 import email.utils
 from email.mime.text import MIMEText
 
+
+def get_all_site(s):
+    url = 'http://used-avtomir.ru'
+    subsite = set()
+    try:
+        html = s.get(url, timeout=(5, 2))
+    except requests.exceptions.RequestException as e:
+        print('{}'.format(e))
+        return None
+    bsObj = BeautifulSoup(html.text)
+    data = bsObj.find("form", {"id": "changeRegion"})
+    if data is None:
+        return None
+    for x in data.option.find_all:
+        print(x.attrs['value'])
+    print(data.option.attrs['value'])
+    tmp = data.find("ul")
+    if tmp is None:
+        return None
+    for x in tmp.find_all("li"):
+        print(x)
+        subsite.add(x.text)
+    return subsite
+
 #import getpass
 def get_links(s, page):
     global urlData
@@ -42,8 +66,8 @@ def get_links(s, page):
         return True
 
 if __name__ == '__main__':
-    #url = "http://vrn.used-avtomir.ru"
-    url = "http://used-avtomir.ru"
+    url = "http://vrn.used-avtomir.ru"
+    #url = "http://used-avtomir.ru"
 
     urlData = set()
     baseData = set()
@@ -54,10 +78,11 @@ if __name__ == '__main__':
     with requests.Session() as s:
         s.headers.update({'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
                                        ' Chrome/61.0.3163.79 Safari/537.36'})
+
+        z = get_all_site(s)
+        print(z)
         page = dict()
         if get_links(s, page):
-            urlData.pop()
-            #urlData.pop()
             #urlData.pop()
             pass
             #print(urlData)
