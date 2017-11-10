@@ -15,23 +15,15 @@ def get_all_site(s):
     url = 'http://used-avtomir.ru'
     subsite = set()
     try:
-        html = s.get(url, timeout=(5, 2))
+        html = s.get(url, timeout=(3, 2))
     except requests.exceptions.RequestException as e:
         print('{}'.format(e))
-        return None
+        return subsite
     bsObj = BeautifulSoup(html.text)
-    data = bsObj.find("form", {"id": "changeRegion"})
-    if data is None:
-        return None
-    for x in data.option.find_all:
-        print(x.attrs['value'])
-    print(data.option.attrs['value'])
-    tmp = data.find("ul")
-    if tmp is None:
-        return None
-    for x in tmp.find_all("li"):
-        print(x)
-        subsite.add(x.text)
+    data = bsObj.find("select", {"id":"citySelect", "name":"CHANGED_REGION"})
+    if data is not None:
+        for x in data.find_all("option"):
+            subsite.add(x.attrs["value"])
     return subsite
 
 #import getpass

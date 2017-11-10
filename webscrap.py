@@ -58,39 +58,35 @@ def daemonize(pidfile, *, stdin='/dev/null', stdout='/dev/null', stderr='/dev/nu
 
 def web_scraping():
     """Main function is """
-    url = "http://vrn.used-avtomir.ru"
+    #url = "http://vrn.used-avtomir.ru"
     urlData = set()
     baseData = set()
     newset = set()
     oldset = set()
 
     def get_all_site(s):
-        url = 'http://used-avtomir.ru'
+        site = 'used-avtomir.ru'
         subsite = set()
         try:
-            html = s.get(url,timeout=(5,2))
+            html = s.get('http://'+site, timeout=(3, 2))
         except requests.exceptions.RequestException as e:
             print('{}'.format(e))
-            return None
+            return subsite
         bsObj = BeautifulSoup(html.text)
-        data = bsObj.find("div", {"class": "ik_select_dropdown citySelect-dd"})
-        if data is None:
-            return None
-        tmp = data.find("ul")
-        if tmp is None:
-            return None
-        for x in tmp.find_all("li"):
-            subsite.add(x.text)
+        data = bsObj.find("select", {"id": "citySelect", "name": "CHANGED_REGION"})
+        if data is not None:
+            for x in data.find_all("option"):
+                subsite.add(x.attrs["value"])
         return subsite
 
-    def get_links(s, page):
+    def get_links(s, url, page):
         """ Get Date from site"""
         annex = "/buy/new/"
         try:
             if bool(page):
-                html = s.get(url + annex, params=page, timeout=(5,2))
+                html = s.get(url + annex, params=page, timeout=(3,1))
             else:
-                html = s.get(url + annex)
+                html = s.get(url + annex, timeout=(3,1))
         except requests.exceptions.RequestException as e:
             print('{}'.format(e))
             return False
@@ -113,12 +109,12 @@ def web_scraping():
             nextref = tmp.find("a", {"id": "_next_page"})
             if nextref is not None:
                 x = re.split(r'=', re.split(r'\?', nextref.attrs["href"])[1])
-                get_links(s, {x[0]: x[1]})
+                get_links(s, url, {x[0]: x[1]})
             return True
         else:
             return True
 
-    def check_dbs():
+    def check_dbs(url):
         """ Check db and get data from it """
         db_file = '/tmp/auto.db'
         schema_file = '/home/mrx/Pyfiles/scraping/auto_schema.sql'
@@ -126,12 +122,18 @@ def web_scraping():
         with sqlite3.connect(db_file) as conn:
             cur = conn.cursor()
             if db_is_new:
-                sys.stdout.write('Create table')
-                with open(schema_file, 'rt') as f:
-                    schema = f.read()
-                    conn.executescript(schema)
-                    print('Insert data')
+                try:
+                    cur.execute('create table ? ( id integer primary key autoincrement not null, name text, price text, description text, link text)', url)
+                except sqlite3.OperationalError as e:
+                    print('CREATE TABLE Error:\n{}'.format(e))
+                    return None
             else:
+                try:
+                    cur.execute('create table if not exists ? ( id integer primary key autoincrement not null, name text, price text, description text, link text)'), url)
+                except sqlite3.OperationalError as e:
+                    print()
+
+
                 try:
                     cur.execute('select name, price, description, link from usedavtomirru')
                 except sqlite3.OperationalError as e:
@@ -212,19 +214,22 @@ def web_scraping():
         with requests.Session() as s:
             s.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
                                             ' Chrome/61.0.3163.79 Safari/537.36'})
+            site = 'used-avtomir.ru'
             z = get_all_site(s)
-            print(z)
-            page = dict()
-            if get_links(s, page):
-                print('{} - get data from site'.format(time.ctime()))
-                z = check_dbs()
-                if z is not None:
-                    print('{} - get data from db and compare it with new'.format(time.ctime()))
-                    send_emails(z)
-                    print('{} - print new data to email'.format(time.ctime()))
-                sys.stdout.flush()
+            for i in z:
+                if i != 'vrn':
+                    continue
+                url = ''.join((i, '.', site))
+                if get_links(s, 'http://'+url, dict()):
+                    print('{} - get data from site'.format(time.ctime()))
+                    z = check_dbs(url)
+                    if z is not None:
+                        print('{} - get data from db and compare it with new'.format(time.ctime()))
+                        send_emails(z)
+                        print('{} - print new data to email'.format(time.ctime()))
+                    sys.stdout.flush()
         # Coffee break
-        time.sleep(20)
+        time.sleep(5)
 
 if __name__ == '__main__':
     PIDFILE = '/tmp/webscrap.pid'
