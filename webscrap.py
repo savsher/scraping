@@ -68,7 +68,7 @@ def web_scraping():
         site = 'used-avtomir.ru'
         subsite = set()
         try:
-            html = s.get('http://'+site, timeout=(3, 2))
+            html = s.get('http://' + site, timeout=(3, 2))
         except requests.exceptions.RequestException as e:
             print('{}'.format(e))
             return subsite
@@ -243,6 +243,8 @@ def web_scraping():
             print('Get Data from sites {}'.format(url))
         # Coffee break
         time.sleep(30)
+
+
 
 if __name__ == '__main__':
     PIDFILE = '/tmp/webscrap.pid'
