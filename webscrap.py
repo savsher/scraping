@@ -117,45 +117,59 @@ def web_scraping():
     def check_dbs(url):
         """ Check db and get data from it """
         db_file = '/tmp/auto.db'
-        schema_file = '/home/mrx/Pyfiles/scraping/auto_schema.sql'
-        db_is_new = not os.path.exists(db_file)
+        #schema_file = '/home/mrx/Pyfiles/scraping/auto_schema.sql'
+        table_name = re.sub('[\-\.\_\/]' ,'', url)
+        #db_is_new = not os.path.exists(db_file)
         with sqlite3.connect(db_file) as conn:
             cur = conn.cursor()
-            if db_is_new:
+            """if db_is_new:
+                query = 'create table if not exit '+table_name+' ( id integer primary key autoincrement not null, name text, price text, description text, link text)'
                 try:
-                    cur.execute('create table ? ( id integer primary key autoincrement not null, name text, price text, description text, link text)', url)
+                    cur.execute(query)
                 except sqlite3.OperationalError as e:
                     print('CREATE TABLE Error:\n{}'.format(e))
                     return None
             else:
+                query = 'select name, price, description, link from'+table_name
                 try:
-                    cur.execute('create table if not exists ? ( id integer primary key autoincrement not null, name text, price text, description text, link text)'), url)
-                except sqlite3.OperationalError as e:
-                    print()
-
-
-                try:
-                    cur.execute('select name, price, description, link from usedavtomirru')
+                    cur.execute(query)
                 except sqlite3.OperationalError as e:
                     print('SELECT Error:\n{}'.format(e))
                     return None
-
                 for row in cur.fetchall():
                     t1, t2, t3, t4 = row
                     baseData.add((t1, t2, t3, t4))
+            """
+            query = 'create table if not exists ' + table_name + ' ( id integer primary key autoincrement not null, name text, price text, description text, link text)'
+            try:
+                cur.execute(query)
+            except sqlite3.OperationalError as e:
+                print('CREATE TABLE Error:\n{}'.format(e))
+                return None
+            query = 'select name, price, description, link from ' + table_name
+            try:
+                cur.execute(query)
+            except sqlite3.OperationalError as e:
+                print('SELECT Error:\n{}'.format(e))
+                return None
+            for row in cur.fetchall():
+                t1, t2, t3, t4 = row
+                baseData.add((t1, t2, t3, t4))
 
             oldset = baseData.difference(urlData)
             newset = urlData.difference(baseData)
             if oldset:
+                query = 'delete from '+table_name+' where name=? and price=? and description=? and link=?'
                 try:
-                    cur.executemany('delete from usedavtomirru where name=? and price=? and description=? and link=?', oldset)
+                    cur.executemany(query, oldset)
                 except sqlite3.OperationalError as e:
                     print('DELETE Error:\n{}'.format(e))
                     return None
                 print('Delete outdate machine:\n{}'.format(oldset))
             if newset:
+                query =  'insert into '+table_name+' (name, price, description, link) values (?,?,?,?)'
                 try:
-                    cur.executemany('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', newset)
+                    cur.executemany(query, newset)
                 except sqlite3.OperationalError as e:
                     print('INSERT Error:\n{}'.format(e))
                     return None
@@ -166,7 +180,7 @@ def web_scraping():
             else:
                 return None
 
-    def send_emails(newset):
+    def send_emails(newset, url):
         # Initial parameter for email
         mail_server = 'smtp.yandex.ru'
         mail_port = 465
@@ -210,26 +224,25 @@ def web_scraping():
         baseData.clear()
         newset.clear()
         oldset.clear()
+        site = 'used-avtomir.ru'
         # Scrap data from site
         with requests.Session() as s:
             s.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
                                             ' Chrome/61.0.3163.79 Safari/537.36'})
-            site = 'used-avtomir.ru'
             z = get_all_site(s)
             for i in z:
-                if i != 'vrn':
-                    continue
                 url = ''.join((i, '.', site))
                 if get_links(s, 'http://'+url, dict()):
-                    print('{} - get data from site'.format(time.ctime()))
+                    #print('{} - get data from site'.format(time.ctime()))
                     z = check_dbs(url)
                     if z is not None:
-                        print('{} - get data from db and compare it with new'.format(time.ctime()))
-                        send_emails(z)
-                        print('{} - print new data to email'.format(time.ctime()))
+                        #print('{} - get data from db and compare it with new'.format(time.ctime()))
+                        send_emails(z, 'http://'+url)
+                        #print('{} - send new data to email'.format(time.ctime()))
                     sys.stdout.flush()
+            print('Get Data from sites {}'.format(url))
         # Coffee break
-        time.sleep(5)
+        time.sleep(30)
 
 if __name__ == '__main__':
     PIDFILE = '/tmp/webscrap.pid'
