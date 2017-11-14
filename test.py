@@ -125,7 +125,7 @@ if __name__ == '__main__':
             newlist.append(i[1]+'\n')
             newlist.append(i[2]+'\n')
             newlist.append(url+i[3]+'\n')
-            newlist.append('+++++++++++++++++++++++++++\n\n')
+            newlist.append('\n+++++++++++++++++++++++++++\n')
 
         msg = MIMEText(''.join(newlist))
         msg.set_unixfrom('author')

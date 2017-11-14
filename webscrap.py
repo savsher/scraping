@@ -58,7 +58,6 @@ def daemonize(pidfile, *, stdin='/dev/null', stdout='/dev/null', stderr='/dev/nu
 
 def web_scraping():
     """Main function is """
-    #url = "http://vrn.used-avtomir.ru"
     urlData = set()
     baseData = set()
     newset = set()
@@ -231,6 +230,8 @@ def web_scraping():
                                             ' Chrome/61.0.3163.79 Safari/537.36'})
             z = get_all_site(s)
             for i in z:
+                if i not in ['arh', 'vrn']:
+                    continue
                 url = ''.join((i, '.', site))
                 if get_links(s, 'http://'+url, dict()):
                     #print('{} - get data from site'.format(time.ctime()))
