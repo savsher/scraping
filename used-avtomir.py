@@ -71,75 +71,85 @@ def check_dbs(url):
     fill baseData
     :return set()/None
     """
-    table_name = re.sub('[\-\.\_\/]' ,'', url)
+    table_name = re.sub('[\-\.\/]' ,'', url)
     db_is_new = not os.path.exists(db_file)
 
     with sqlite3.connect(db_file) as conn:
         cur = conn.cursor()
         if db_is_new:
-            # Create table if not exists
+            # Create table
             query = 'create table ' + table_name + ' ( id integer primary key autoincrement not null, name text, price text, description text, link text)'
             try:
                 cur.execute(query)
             except sqlite3.OperationalError as e:
-                print('CREATE TABLE Error:\n{}'.format(e))
+                print('CREATE TABLE ERROR:\n{}'.format(e))
                 return None
-
-            print('Insert data')
-            cur.executemany('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', urlData)
+            print('Create table : {}'.format(table_name))
+            # Fill table
+            query = 'insert into ' + table_name + ' (name, price, description, link) values (?,?,?,?)'
+            try:
+                cur.executemany( query, urlData)
+            except sqlite3.OperationalError as e:
+                print('INSERT INTO {} ERROR:\n{}'.format(table_name,e))
+                return None
             conn.commit()
+            return None
         else:
-            print('Pull out data')
-            cur.execute('select name, price, description, link from usedavtomirru')
-            for row in cur.fetchall():
-                t1, t2, t3, t4 = row
-                baseData.add((t1, t2, t3, t4))
-            old_set = baseData.difference(urlData)
-            new_set = urlData.difference(baseData)
-            if old_set:
-                cur.executemany('delete from usedavtomirru where name=? and price=? and description=? and link=?', old_set)
-            if new_set:
-                cur.executemany('insert into usedavtomirru (name, price, description, link) values (?,?,?,?)', new_set)
-        cur.close()
-
-
-
-        # Create table if not exists
-        query = 'create table if not exists ' + table_name + ' ( id integer primary key autoincrement not null, name text, price text, description text, link text)'
-        try:
-            cur.execute(query)
-        except sqlite3.OperationalError as e:
-            print('CREATE TABLE Error:\n{}'.format(e))
-            return None
-        # Select sql
-        query = 'select name, price, description, link from ' + table_name
-        try:
-            cur.execute(query)
-        except sqlite3.OperationalError as e:
-            print('SELECT Error:\n{}'.format(e))
-            return None
-        for row in cur.fetchall():
-            t1, t2, t3, t4 = row
-            baseData.add((t1, t2, t3, t4))
-
-        oldset = baseData.difference(urlData)
-        newset = urlData.difference(baseData)
-        if oldset:
-            query = 'delete from '+table_name+' where name=? and price=? and description=? and link=?'
+            # Check table exit ?
+            query = "select name from sqlite_master where type='table' and name='" + table_name+"'"
             try:
-                cur.executemany(query, oldset)
+                cur.execute(query)
             except sqlite3.OperationalError as e:
-                print('DELETE Error:\n{}'.format(e))
+                print('SELECT NAME FROM SQLITE_MASTER ERROR:\n{}'.format(e))
                 return None
-            print('Delete outdate machine:\n{}'.format(oldset))
-        if newset:
-            query =  'insert into '+table_name+' (name, price, description, link) values (?,?,?,?)'
-            try:
-                cur.executemany(query, newset)
-            except sqlite3.OperationalError as e:
-                print('INSERT Error:\n{}'.format(e))
+            if cur.fetchone() is None:
+                # Create table
+                query = 'create table ' + table_name + ' ( id integer primary key autoincrement not null, name text, price text, description text, link text)'
+                try:
+                    cur.execute(query)
+                except sqlite3.OperationalError as e:
+                    print('CREATE TABLE ERROR:\n{}'.format(e))
+                    return None
+                print('Create table : {}'.format(table_name))
+                # Fill table
+                query = 'insert into ' + table_name + ' (name, price, description, link) values (?,?,?,?)'
+                try:
+                    cur.executemany(query, urlData)
+                except sqlite3.OperationalError as e:
+                    print('INSERT INTO {} ERROR:\n{}'.format(table_name, e))
+                    return None
+                conn.commit()
                 return None
-            print('Add new vehile:\n{}'.format(newset))
+            else:
+                # Get Data from table
+                query = 'select name, price, description, link from ' + table_name
+                try:
+                    cur.execute(query)
+                except sqlite3.OperationalError as e:
+                    print('SELECT {} ERROR:\n{}'.format(table_name, e))
+                    return None
+
+                for row in cur.fetchall():
+                    t1, t2, t3, t4 = row
+                    baseData.add((t1, t2, t3, t4))
+
+                old_set = baseData.difference(urlData)
+                new_set = urlData.difference(baseData)
+
+                if old_set:
+                    query = 'delete from ' + table_name + ' where name=? and price=? and description=? and link=?'
+                    try:
+                        cur.executemany(query, old_set)
+                    except sqlite3.OperationalError as e:
+                        print('DELETE FROM {} ERROR:\n{}'.format(table_name, e))
+                        return None
+                if new_set:
+                    query = 'insert into ' + table_name + '(name, price, description, link) values (?,?,?,?)'
+                    try :
+                        cur.executemany(query, new_set)
+                    except sqlite3.OperationalError as e:
+                        print('INSERT INTO {} ERROR:\n{}'.format(table_name, e))
+                        return None
         cur.close()
         if newset:
             return newset
@@ -194,8 +204,5 @@ if __name__ == '__main__':
                 continue
             if get_link(s, ''.join(('http://', i, '.', site)), dict()):
                 print(urlData)
-            # print('{} - get data from site'.format(time.ctime()))
-
-        # print('{} - get data from site'.format(time.ctime()))
 
 

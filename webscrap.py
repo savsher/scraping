@@ -9,7 +9,6 @@ import time
 import used-avtomir
 import requests
 
-
 def daemonize(pidfile, *, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
     if os.path.exists(pidfile):
         raise RuntimeError('Already running')
@@ -84,8 +83,6 @@ def web_scraping():
             print('Get Data from sites {}'.format(url))
         # Coffee break
         time.sleep(30)
-
-
 
 if __name__ == '__main__':
     cur_dir = os.getcwd()
