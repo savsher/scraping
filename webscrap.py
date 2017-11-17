@@ -6,7 +6,7 @@ import sys
 import atexit
 import signal
 import time
-import used-avtomir
+import usedavtomir
 import requests
 
 def daemonize(pidfile, *, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
@@ -50,31 +50,22 @@ def daemonize(pidfile, *, stdin='/dev/null', stdout='/dev/null', stderr='/dev/nu
 
 def web_scraping():
     """ Main function """
-    urlData = set()
-    baseData = set()
-    newset = set()
-    oldset = set()
 
     # Main circle
     print('Daemon <webscraping> started with pid {}\n'.format(os.getpid()))
     while True:
-        urlData.clear()
-        baseData.clear()
-        newset.clear()
-        oldset.clear()
-        site = 'used-avtomir.ru'
         # Scrap data from site
         with requests.Session() as s:
             s.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
                                             ' Chrome/61.0.3163.79 Safari/537.36'})
-            z = used-avtomir.get_all_site(s)
+            z = usedavtomir.get_all_avtomir(s)
             print(z)
             for i in z:
                 if i not in ['arh', 'vrn']:
                     continue
-                if get_link(s, ''.join(('http://', i, '.', site), dict())):
+                if usedavtomir.get_link(s, ''.join(('http://', i, '.', usedavtomir.site)) , dict()):
                     #print('{} - get data from site'.format(time.ctime()))
-                    z = check_dbs(url)
+                    z = usedavtomir.check_db(url)
                     if z is not None:
                         #print('{} - get data from db and compare it with new'.format(time.ctime()))
                         send_emails(z, 'http://'+url)

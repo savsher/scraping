@@ -8,10 +8,26 @@ import sqlite3
 import smtplib
 import email.utils
 from email.mime.text import MIMEText
+import os
+from contextlib import closing
 
 # initial data
 site = 'used-avtomir.ru'
 db_file = 'auto.db'
+urlData = set()
+dbData = set()
+
+with open('webscrap.ini', 'r') as f:
+    for line in f:
+        print(line)
+
+mail_server = 'smtp.yandex.ru'
+from_email = 'savpod@yandex.ru'
+to_email = 'savsher@gmail.com'
+to_email2 = 'savsher@yandex.ru'
+username = 'savpod'
+passwd = ',tutvjnf40'
+
 
 def get_all_avtomir(s):
     subsite = set()
@@ -35,6 +51,7 @@ def get_link(s, url, page):
     :return True/False
     """
     annex = "/buy/new/"
+    urlData.clear()
     try:
         if bool(page):
             html = s.get(url + annex, params=page, timeout=(3, 1))
@@ -65,44 +82,19 @@ def get_link(s, url, page):
             get_link(s, url, {x[0]: x[1]})
     return True
 
-def check_dbs(url):
+def check_db(url):
     """
     Check db and get data from it
     fill baseData
     :return set()/None
     """
+    dbData.clear()
     table_name = re.sub('[\-\.\/]' ,'', url)
     db_is_new = not os.path.exists(db_file)
 
     with sqlite3.connect(db_file) as conn:
-        cur = conn.cursor()
-        if db_is_new:
-            # Create table
-            query = 'create table ' + table_name + ' ( id integer primary key autoincrement not null, name text, price text, description text, link text)'
-            try:
-                cur.execute(query)
-            except sqlite3.OperationalError as e:
-                print('CREATE TABLE ERROR:\n{}'.format(e))
-                return None
-            print('Create table : {}'.format(table_name))
-            # Fill table
-            query = 'insert into ' + table_name + ' (name, price, description, link) values (?,?,?,?)'
-            try:
-                cur.executemany( query, urlData)
-            except sqlite3.OperationalError as e:
-                print('INSERT INTO {} ERROR:\n{}'.format(table_name,e))
-                return None
-            conn.commit()
-            return None
-        else:
-            # Check table exit ?
-            query = "select name from sqlite_master where type='table' and name='" + table_name+"'"
-            try:
-                cur.execute(query)
-            except sqlite3.OperationalError as e:
-                print('SELECT NAME FROM SQLITE_MASTER ERROR:\n{}'.format(e))
-                return None
-            if cur.fetchone() is None:
+        with closing(conn.cursor()) as cur:
+            if db_is_new:
                 # Create table
                 query = 'create table ' + table_name + ' ( id integer primary key autoincrement not null, name text, price text, description text, link text)'
                 try:
@@ -110,62 +102,79 @@ def check_dbs(url):
                 except sqlite3.OperationalError as e:
                     print('CREATE TABLE ERROR:\n{}'.format(e))
                     return None
-                print('Create table : {}'.format(table_name))
+                print('CREATE TABLE : {}'.format(table_name))
                 # Fill table
                 query = 'insert into ' + table_name + ' (name, price, description, link) values (?,?,?,?)'
                 try:
-                    cur.executemany(query, urlData)
+                    cur.executemany( query, urlData)
+                    conn.commit()
                 except sqlite3.OperationalError as e:
-                    print('INSERT INTO {} ERROR:\n{}'.format(table_name, e))
+                    print('INSERT INTO {} ERROR:\n{}'.format(table_name,e))
                     return None
-                conn.commit()
                 return None
             else:
-                # Get Data from table
-                query = 'select name, price, description, link from ' + table_name
+                # Check table exit?
+                query = "select name from sqlite_master where type='table' and name='"+table_name+"'"
                 try:
                     cur.execute(query)
+                    flag = cur.fetchone()
                 except sqlite3.OperationalError as e:
-                    print('SELECT {} ERROR:\n{}'.format(table_name, e))
+                    print('SELECT NAME FROM SQLITE_MASTER ERROR:\n{}'.format(e))
                     return None
-
-                for row in cur.fetchall():
-                    t1, t2, t3, t4 = row
-                    baseData.add((t1, t2, t3, t4))
-
-                old_set = baseData.difference(urlData)
-                new_set = urlData.difference(baseData)
-
-                if old_set:
-                    query = 'delete from ' + table_name + ' where name=? and price=? and description=? and link=?'
+                if flag is None:
+                    # Create table
+                    query = 'create table ' + table_name + ' ( id integer primary key autoincrement not null, name text, price text, description text, link text)'
                     try:
-                        cur.executemany(query, old_set)
+                        cur.execute(query)
+                        conn.commit()
                     except sqlite3.OperationalError as e:
-                        print('DELETE FROM {} ERROR:\n{}'.format(table_name, e))
+                        print('CREATE TABLE ERROR:\n{}'.format(e))
                         return None
-                if new_set:
-                    query = 'insert into ' + table_name + '(name, price, description, link) values (?,?,?,?)'
-                    try :
-                        cur.executemany(query, new_set)
+                    print('CREATE TABLE : {}'.format(table_name))
+                    # Fill table
+                    query = 'insert into ' + table_name + ' (name, price, description, link) values (?,?,?,?)'
+                    try:
+                        cur.executemany(query, urlData)
+                        conn.commit()
                     except sqlite3.OperationalError as e:
                         print('INSERT INTO {} ERROR:\n{}'.format(table_name, e))
                         return None
-        cur.close()
-        if newset:
-            return newset
-        else:
-            return None
+                    return None
+                else:
+                    # Get Data from table
+                    query = 'select name, price, description, link from ' + table_name
+                    try:
+                        cur.execute(query)
+                        for row in cur.fetchall():
+                            dbData.add(row)
+                    except sqlite3.OperationalError as e:
+                        print('SELECT {} ERROR:\n{}'.format(table_name, e))
+                        return None
+                    # Compare two set urlData and
+                    old_set = dbData.difference(urlData)
+                    new_set = urlData.difference(dbData)
+                    print('OLD: {}'.format(old_set))
+                    print('NEW: {}'.format(new_set))
+                    if old_set:
+                        query = 'delete from ' + table_name + ' where name=? and price=? and description=? and link=?'
+                        try:
+                            cur.executemany(query, old_set)
+                            conn.commit()
+                        except sqlite3.OperationalError as e:
+                            print('DELETE FROM {} ERROR:\n{}'.format(table_name, e))
+                            return None
+                    if new_set:
+                        query = 'insert into ' + table_name + '(name, price, description, link) values (?,?,?,?)'
+                        try :
+                            cur.executemany(query, new_set)
+                            conn.commit()
+                        except sqlite3.OperationalError as e:
+                            print('INSERT INTO {} ERROR:\n{}'.format(table_name, e))
+                            return None
+                        return new_set
+                    return None
 
 def send_emails(newset, url):
-    # Initial parameter for email
-    mail_server = 'smtp.yandex.ru'
-    mail_port = 465
-    from_email = 'savpod@yandex.ru'
-    to_email = 'savsher@gmail.com'
-    to_email2 = 'savsher@yandex.ru'
-    username = 'savpod'
-    passwd = ',tutvjnf40'
-
     # Create the message
     newlist = []
     for i in newset:
@@ -173,7 +182,7 @@ def send_emails(newset, url):
         newlist.append(i[1] + '\n')
         newlist.append(i[2] + '\n')
         newlist.append(url + i[3] + '\n')
-        newlist.append('+++++++++++++++++++++++++++\n\n')
+        newlist.append('\n+++++++++++++++++++++++++++\n')
 
     msg = MIMEText(''.join(newlist))
     msg.set_unixfrom('author')
@@ -190,19 +199,18 @@ def send_emails(newset, url):
             server.ehlo()
         if server.has_extn('AUTH'):
             server.login(username, passwd)
-            server.sendmail(from_email, [to_email, ], msg.as_string())
+            server.sendmail(from_email, [to_email, to_email2 ], msg.as_string())
     finally:
         server.quit()
 
 if __name__ == '__main__':
-    urlData = set()
     with requests.Session() as s:
         s.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
                                         ' Chrome/61.0.3163.79 Safari/537.36'})
         for i in get_all_avtomir(s):
-            if i not in ['arh',]:
+            if i not in ['arh','vrn']:
                 continue
             if get_link(s, ''.join(('http://', i, '.', site)), dict()):
-                print(urlData)
-
-
+                z = check_db(''.join((i,'.', site)))
+                if z is not None:
+                    send_emails(z, ''.join(('http://', i, '.', site)))
