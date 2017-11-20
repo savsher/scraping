@@ -10,23 +10,26 @@ import email.utils
 from email.mime.text import MIMEText
 import os
 from contextlib import closing
+import configparser
 
 # initial data
 site = 'used-avtomir.ru'
 db_file = 'auto.db'
 urlData = set()
 dbData = set()
+mflag = True
 
-with open('webscrap.ini', 'r') as f:
-    for line in f:
-        print(line)
+config = configparser.ConfigParser()
+config.read('webscrap.ini')
+mail_server = config.get('EMAIL','server')
+from_email = config.get('EMAIL','from')
+to_email = config.get('EMAIL','to')
+to_email2 = config.get('EMAIL','to2')
+username = config.get('EMAIL','user')
+passwd = config.get('EMAIL','passwd')
 
-mail_server = 'smtp.yandex.ru'
-from_email = 'savpod@yandex.ru'
-to_email = 'savsher@gmail.com'
-to_email2 = 'savsher@yandex.ru'
-username = 'savpod'
-passwd = ',tutvjnf40'
+if mail_server == 'example@mail.com':
+    mflag = False
 
 
 def get_all_avtomir(s):
@@ -208,9 +211,12 @@ if __name__ == '__main__':
         s.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
                                         ' Chrome/61.0.3163.79 Safari/537.36'})
         for i in get_all_avtomir(s):
-            if i not in ['arh','vrn']:
+            if i not in ['vrn']:
                 continue
             if get_link(s, ''.join(('http://', i, '.', site)), dict()):
                 z = check_db(''.join((i,'.', site)))
                 if z is not None:
-                    send_emails(z, ''.join(('http://', i, '.', site)))
+                    if mflag:
+                        send_emails(z, ''.join(('http://', i, '.', site)))
+                    else:
+                        print(z)
