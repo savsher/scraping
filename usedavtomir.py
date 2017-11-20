@@ -1,36 +1,17 @@
 #!/usr/bin/env python3
-# (C) savsher@gmail.com 20171114
 
 import requests
 from bs4 import BeautifulSoup
 import re
 import sqlite3
-import smtplib
-import email.utils
-from email.mime.text import MIMEText
 import os
 from contextlib import closing
-import configparser
 
-# initial data
+# Initial data
 site = 'used-avtomir.ru'
 db_file = 'auto.db'
 urlData = set()
 dbData = set()
-mflag = True
-
-config = configparser.ConfigParser()
-config.read('webscrap.ini')
-mail_server = config.get('EMAIL','server')
-from_email = config.get('EMAIL','from')
-to_email = config.get('EMAIL','to')
-to_email2 = config.get('EMAIL','to2')
-username = config.get('EMAIL','user')
-passwd = config.get('EMAIL','passwd')
-
-if mail_server == 'example@mail.com':
-    mflag = False
-
 
 def get_all_avtomir(s):
     subsite = set()
@@ -54,12 +35,11 @@ def get_link(s, url, page):
     :return True/False
     """
     annex = "/buy/new/"
-    urlData.clear()
     try:
         if bool(page):
-            html = s.get(url + annex, params=page, timeout=(3, 1))
+            html = s.get(url + annex, params=page, timeout=(5, 2))
         else:
-            html = s.get(url + annex, timeout=(3, 1))
+            html = s.get(url + annex, timeout=(5, 2))
     except requests.exceptions.RequestException as e:
         print('{}'.format(e))
         return False
@@ -91,7 +71,6 @@ def check_db(url):
     fill baseData
     :return set()/None
     """
-    dbData.clear()
     table_name = re.sub('[\-\.\/]' ,'', url)
     db_is_new = not os.path.exists(db_file)
 
@@ -109,7 +88,7 @@ def check_db(url):
                 # Fill table
                 query = 'insert into ' + table_name + ' (name, price, description, link) values (?,?,?,?)'
                 try:
-                    cur.executemany( query, urlData)
+                    cur.executemany(query, urlData)
                     conn.commit()
                 except sqlite3.OperationalError as e:
                     print('INSERT INTO {} ERROR:\n{}'.format(table_name,e))
@@ -156,8 +135,8 @@ def check_db(url):
                     # Compare two set urlData and
                     old_set = dbData.difference(urlData)
                     new_set = urlData.difference(dbData)
-                    print('OLD: {}'.format(old_set))
-                    print('NEW: {}'.format(new_set))
+                    #print('OLD: {}'.format(old_set))
+                    #print('NEW: {}'.format(new_set))
                     if old_set:
                         query = 'delete from ' + table_name + ' where name=? and price=? and description=? and link=?'
                         try:
@@ -177,46 +156,17 @@ def check_db(url):
                         return new_set
                     return None
 
-def send_emails(newset, url):
-    # Create the message
-    newlist = []
-    for i in newset:
-        newlist.append(i[0] + '\n')
-        newlist.append(i[1] + '\n')
-        newlist.append(i[2] + '\n')
-        newlist.append(url + i[3] + '\n')
-        newlist.append('\n+++++++++++++++++++++++++++\n')
-
-    msg = MIMEText(''.join(newlist))
-    msg.set_unixfrom('author')
-    msg['To'] = email.utils.formataddr(('Recipient', to_email))
-    msg['From'] = email.utils.formataddr(('Author', from_email))
-    msg['Subject'] = 'new objects'
-
-    server = smtplib.SMTP_SSL(mail_server)
-    try:
-        # server.set_debuglevel(True)
-        server.ehlo()
-        if server.has_extn('STARTTLS'):
-            server.starttls()
-            server.ehlo()
-        if server.has_extn('AUTH'):
-            server.login(username, passwd)
-            server.sendmail(from_email, [to_email, to_email2 ], msg.as_string())
-    finally:
-        server.quit()
-
 if __name__ == '__main__':
     with requests.Session() as s:
         s.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
                                         ' Chrome/61.0.3163.79 Safari/537.36'})
         for i in get_all_avtomir(s):
-            if i not in ['vrn']:
+            if i not in ['arh','vrn','msk','kr']:
                 continue
+            urlData.clear()
+            dbData.clear()
             if get_link(s, ''.join(('http://', i, '.', site)), dict()):
                 z = check_db(''.join((i,'.', site)))
                 if z is not None:
-                    if mflag:
-                        send_emails(z, ''.join(('http://', i, '.', site)))
-                    else:
-                        print(z)
+                    print(''.join(i, '.', site))
+                    print(z)
